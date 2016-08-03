@@ -12,11 +12,223 @@ class Wechat
     //私有化属性  公共，私有，被保护
     private $appid;
     private $appsecret;
+    private $token;
+
     //构造方法
     public function __construct()
     {
         $this->appid = APPID;
         $this->appsecret = APPSECRET;
+        $this->token = TOKEN;
+        $this->textTpl = "<xml>
+							<ToUserName><![CDATA[%s]]></ToUserName>
+							<FromUserName><![CDATA[%s]]></FromUserName>
+							<CreateTime>%s</CreateTime>
+							<MsgType><![CDATA[%s]]></MsgType>
+							<Content><![CDATA[%s]]></Content>
+							<FuncFlag>0</FuncFlag>
+							</xml>";
+        $this->imgText = "<xml>
+                        <ToUserName><![CDATA[%s]]></ToUserName>
+                        <FromUserName><![CDATA[%s]]></FromUserName>
+                        <CreateTime>%s</CreateTime>
+                        <MsgType><![CDATA[news]]></MsgType>
+                        <ArticleCount>%s</ArticleCount>
+                        <Articles>%s</Articles>
+                        </xml>";
+        $this->item = "<item>
+                        <Title><![CDATA[%s]]></Title> 
+                        <Description><![CDATA[%s]]></Description>
+                        <PicUrl><![CDATA[%s]]></PicUrl>
+                        <Url><![CDATA[%s]]></Url>
+                        </item>";
+        $this->music = "<xml>
+                        <ToUserName><![CDATA[%s]]></ToUserName>
+                        <FromUserName><![CDATA[%s]]></FromUserName>
+                        <CreateTime>%s</CreateTime>
+                        <MsgType><![CDATA[music]]></MsgType>
+                        <Music>
+                        <Title><![CDATA[%s]]></Title>
+                        <Description><![CDATA[%s]]></Description>
+                        <MusicUrl><![CDATA[%s]]></MusicUrl>
+                        <HQMusicUrl><![CDATA[%s]]></HQMusicUrl>
+                        </Music>
+                        </xml>";
+    }
+    public function valid()
+    {
+        $echoStr = $_GET["echostr"];
+
+        //valid signature , option
+        if($this->checkSignature()){
+            echo $echoStr;
+            exit;
+        }
+    }
+
+    public function responseMsg()
+    {
+        //get post data, May be due to the different environments
+        $postStr = $GLOBALS["HTTP_RAW_POST_DATA"];
+
+        //extract post data
+        if (!empty($postStr)){
+            /* libxml_disable_entity_loader is to prevent XML eXternal Entity Injection,
+               the best way is to check the validity of xml by yourself */
+            libxml_disable_entity_loader(true);
+            $postObj = simplexml_load_string($postStr, 'SimpleXMLElement', LIBXML_NOCDATA);
+            switch ($postObj->MsgType) {
+                case 'text':
+                    $this->_doText($postObj);
+                    break;
+                case 'image':
+                    $this->_doImage($postObj);
+                    break;
+                case 'location':
+                    $this->_doLocation($postObj);
+                    break;
+                case 'event':
+                    $this->_doEvent($postObj);
+                    break;
+                default:
+                    break;
+            }
+        }else {
+                echo "";
+                exit;
+                }
+    }
+    //文本消息回复
+    public function _doText($postObj)
+    {
+        $keyword = trim($postObj->Content);
+        if(!empty( $keyword ))
+        {
+            $msgType = "text";
+            $contentStr = "Welcome to wechat world!";
+            if ($keyword == '音乐') {
+                //file_put_contents("ceshi.txt", "222");
+                $this->_sendMusic($postObj);
+                exit();
+            } elseif ($keyword == '靠') {
+                $contentStr = "说话文明!";
+            }
+//            $url = 'http://api.qingyunke.com/api.php?key=free&appid=0&msg=' . $keyword;
+//            $content = $this->request($url, false);
+//            $content = json_decode($content);
+//            $contentStr = $content->content;
+            $resultStr = sprintf($this->textTpl, $postObj->FromUserName, $postObj->ToUserName, time(), $msgType, $contentStr);
+            echo $resultStr;
+        }else{
+            echo "Input something...";
+        }
+    }
+    //图片消息处理
+    public function _doImage($postObj)
+    {
+        $PicUrl = $postObj->PicUrl;
+        $resultStr = sprintf($this->textTpl, $postObj->FromUserName, $postObj->ToUserName, time(), 'text', $PicUrl);
+        echo $resultStr;
+    }
+    //坐标信息处理
+    public function _doLocation($postObj)
+    {
+        $location = "您的X坐标是:" . $postObj->Location_X . "Y坐标是：" . $postObj->Location_Y;
+        $resultStr = sprintf($this->textTpl, $postObj->FromUserName, $postObj->ToUserName, time(), 'text', $location);
+        echo $resultStr;
+    }
+    //Event事件处理
+    public function _doEvent($postObj)
+    {
+        $event = $postObj->Event;
+        switch ($event) {
+            case 'subscribe':
+                $this->_doSubscribe($postObj);
+                break;
+            case 'unsubscribe':
+                $this->_doUnsubcribe($postObj);
+                break;
+            case 'CLICK':
+                $this->_click($postObj);
+                break;
+            default:
+                break;
+        }
+    }
+    //关注事件
+    public function _doSubscribe($postObj)
+    {
+        $contentStr = "欢迎您关注我们";
+        $resultStr = sprintf($this->textTpl, $postObj->FromUserName, $postObj->ToUserName, time(), 'text', $contentStr);
+        echo $resultStr;
+    }
+    //点击自定义菜单事件
+    public function _click($postObj)
+    {
+        $eventKey = $postObj->EventKey;
+        switch ($eventKey) {
+            case 'news':
+                $this->_sendTuwen($postObj);
+                break;
+            default:
+                break;
+        }
+    }
+    //发送图文消息事件
+    public function _sendTuwen($postObj)
+    {
+        $array = array(
+            array(
+                'Title' => '林心如真的怀孕了！陪霍建华K歌，一阵风让孕肚现形',
+                'Description' => '林心如霍建华婚讯最新消息：心如貌似是真的怀孕了！！！',
+                'PicUrl' => 'http://p2.ifengimg.com/haina/2016_29/f45d2288cf36e36_w440_h440.jpg',
+                'Url' => 'http://ent.ifeng.com/a/20160714/42651663_0.shtml',
+            ),
+            array(
+                'Title' => '汪峰传闻惹章子怡发飙 盘点大牌女星产后复出：章子怡惊艳 寡姐性感',
+                'Description' => '女明星产后复工不仅是她们人生的新起点,更是众人津津乐道的重头戏。前不久,韩国女神全智贤产后复出,时尚大片又仙又霸气。最近,章子怡又被证实洛杉矶低调复工,大合影上黑色小礼服的那一抹倩影,依然美如少女模样……',
+                'PicUrl' => 'http://www.people.com.cn/mediafile/pic/20160803/61/2381498461783015885.jpg',
+                'Url' => 'http://cq.people.com.cn/GB/365409/c28776823.html',
+            ),
+        );
+        $item = '';
+        foreach ($array as $key => $value) {
+            $item .= sprintf($this->item, $value['Title'], $value['Description'], $value['PicUrl'], $value['Url']);
+        }
+        $resultStr = sprintf($this->imgText, $postObj->FromUserName, $postObj->ToUserName, time(), count($array), $item);
+        echo $resultStr;
+    }
+    //发送音乐消息事件
+    public function _sendMusic($postObj)
+    {
+        //file_put_contents('1111.txt', "999");
+        $musicUrl = 'http://wx.jsy135.com/wechat48/huluwa.mp3';
+        $content = sprintf($this->music, $postObj->FromUserName, $postObj->ToUserName, time(), '音乐', '好听的', $musicUrl, $musicUrl);
+        echo $content;
+    }
+    private function checkSignature()
+    {
+        // you must define TOKEN by yourself
+        if (!defined("TOKEN")) {
+            throw new Exception('TOKEN is not defined!');
+        }
+
+        $signature = $_GET["signature"];
+        $timestamp = $_GET["timestamp"];
+        $nonce = $_GET["nonce"];
+
+        $token = $this->token;
+        $tmpArr = array($token, $timestamp, $nonce);
+        // use SORT_STRING rule
+        sort($tmpArr, SORT_STRING);
+        $tmpStr = implode( $tmpArr );
+        $tmpStr = sha1( $tmpStr );
+
+        if( $tmpStr == $signature ){
+            return true;
+        }else{
+            return false;
+        }
     }
     public function request($url,$https=true,$method='get',$data=null){
         //1.初始化url
@@ -123,7 +335,7 @@ class Wechat
                      {	
                           "type":"click",
                           "name":"今日歌曲",
-                          "key":"V1001_TODAY_MUSIC"
+                          "key":"news"
                       },
                       {
                            "name":"菜单",
