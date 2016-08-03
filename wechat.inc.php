@@ -167,6 +167,36 @@ class Wechat
         //4.处理返回数据
         //$content = json_decode($content);
         var_dump($content);
-
+    }
+    //获取用户openID
+    public function getUserList()
+    {
+        //1.url地址
+        $url = 'https://api.weixin.qq.com/cgi-bin/user/get?access_token=' . $this->getAccessToken();
+        //2.是否post
+        //3.发送请求
+        $content = $this->request($url);
+        //4.处理返回值
+        $content = json_decode($content);
+        echo '现在的关注者数：'.$content->total.'<br />';
+        //var_dump($content->data);
+        foreach ($content->data->openid as $key => $value) {
+            echo ($key+1) . '#' . '<a href="getuserinfo.php?openid='.$value.'">' . $value .'</a><br/>';
+        }
+    }
+    //通过openID获取用户基本信息
+    public function getUserInfo($openid)
+    {
+        //1.url地址
+        $url = 'https://api.weixin.qq.com/cgi-bin/user/info?access_token='.$this->getAccessToken().'&openid='.$openid.'&lang=zh_CN';
+        //2.是否post
+        //3.发送请求
+        $content = $this->request($url);
+        //4.处理返回值
+        $content = json_decode($content);
+        echo '昵称为：' . $content->nickname . '<br />';
+        echo '性别为：' . $content->sex . '<br />';
+        echo '省份为：' . $content->province . '<br />';
+        echo '<img src="'.$content->headimgurl.'"/>';
     }
 }
