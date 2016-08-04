@@ -54,6 +54,15 @@ class Wechat
                         <HQMusicUrl><![CDATA[%s]]></HQMusicUrl>
                         </Music>
                         </xml>";
+        $this->image = "<xml>
+                        <ToUserName><![CDATA[%s]]></ToUserName>
+                        <FromUserName><![CDATA[%s]]></FromUserName>
+                        <CreateTime>%s</CreateTime>
+                        <MsgType><![CDATA[image]]></MsgType>
+                        <Image>
+                        <MediaId><![CDATA[%s]]></MediaId>
+                        </Image>
+                        </xml>";
     }
     public function valid()
     {
@@ -123,11 +132,21 @@ class Wechat
             echo "Input something...";
         }
     }
+//<xml>
+//<ToUserName><![CDATA[%s]]></ToUserName>
+//<FromUserName><![CDATA[%s]]></FromUserName>
+//<CreateTime>%s</CreateTime>
+//<MsgType><![CDATA[image]]></MsgType>
+//<Image>
+//<MediaId><![CDATA[%s]]></MediaId>
+//</Image>
+//</xml>";
     //图片消息处理
     public function _doImage($postObj)
     {
-        $PicUrl = $postObj->PicUrl;
-        $resultStr = sprintf($this->textTpl, $postObj->FromUserName, $postObj->ToUserName, time(), 'text', $PicUrl);
+        //$PicUrl = $postObj->PicUrl;
+        $MediaId = $postObj->MediaId;
+        $resultStr = sprintf($this->image, $postObj->FromUserName, $postObj->ToUserName, time(), $MediaId);
         echo $resultStr;
     }
     //坐标信息处理
